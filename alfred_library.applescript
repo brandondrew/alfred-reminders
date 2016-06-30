@@ -94,14 +94,14 @@ on cacheReminders(wf, cacheFile)
 	set cacheTimeout to 30
 	set cacheInProgress to wf's get_value("cacheInProgress", cacheFile)
 	set existingReminders to getCachedReminderList(wf, cacheFile)
-	
+
 	if cacheInProgress is not missing value then
 		-- return previous cache results, even if they are out of date
 		if (my unixtime(current date)) - cacheInProgress is less than cacheTimeout then return existingReminders
 	end if
-	
+
 	wf's set_value("closeReminders", closeReminders, cacheFile)
-	
+
 	-- spawn cache process
 	my spawnReminderCache(workflowFolder & "/cache-reminders.scpt", true, "")
 	return existingReminders
@@ -123,14 +123,14 @@ on filterReminders(reminderList, theText, theDate, theList)
 			set matchedText to false
 			set matchedDate to false
 			set matchedList to false
-			
+
 			if theText is missing value or theText is "" or theText is Â
 				allString or theText is overdueString Â
 				or theText is refreshString Â
 				or reminder_item's title contains theText then
 				set matchedText to true
 			end if
-			
+
 			try
 				set reminddate to (reminder_item's reminddate)
 			on error
@@ -152,11 +152,11 @@ on filterReminders(reminderList, theText, theDate, theList)
 			else if (duedate is not missing value) and ((date string of theDate) is equal to (date string of duedate)) then
 				set matchedDate to true
 			end if
-			
+
 			if theList is missing value or theList is "" or reminder_item's parentlist contains theList then
 				set matchedList to true
 			end if
-			
+
 			if matchedText and matchedDate and matchedList then
 				try
 					set body to (reminder_item's body)
@@ -186,7 +186,7 @@ on parseReminder(q)
 	set theApplication to ""
 	set theIcon to ""
 	set valid to ""
-	
+
 	if first word of q is "this" then
 		set theApplication to my frontmostapp()
 		try
@@ -195,9 +195,9 @@ on parseReminder(q)
 			set q to ""
 		end try
 	end if
-	
+
 	if q is not allString and q is not overdueString and q is not refreshString then
-		
+
 		try
 			set old_delims to AppleScript's text item delimiters
 			set AppleScript's text item delimiters to space
@@ -225,7 +225,7 @@ on parseReminder(q)
 				end if
 			end if
 		end try
-		
+
 		try
 			-- check for x in y list
 			if last word of q is "list" then
@@ -252,7 +252,7 @@ on parseReminder(q)
 				set AppleScript's text item delimiters to old_delims
 			end if
 		end try
-		
+
 		try
 			-- check for tomorrow x
 			if (length of first word of q) is greater than 2 and "tomorrow" starts with first word of q then
@@ -271,7 +271,7 @@ on parseReminder(q)
 				set valid to "yes"
 			end if
 		end try
-		
+
 		try
 			-- check for in x minutes y
 			if theDate is "" and first word of q is "in" and Â
@@ -367,7 +367,7 @@ on parseReminder(q)
 						else
 							set (time of theDate) to time of (my convertTime(theTimeStr))
 						end if
-						
+
 						if theDate is not "" then
 							set valid to "yes"
 						else
@@ -384,10 +384,10 @@ on parseReminder(q)
 			end if
 		end try
 	else
-		-- "r all", "r refresh"
+		-- "do all", "do refresh"
 		set theText to q
 	end if
-	
+
 	if theApplication is "" and (theText is "" or valid is "no") then
 		set valid to "no"
 	else if theApplication is not "" and isAppSupported(theApplication, "Reminders") then
@@ -415,7 +415,7 @@ on formatReminderSubtitle(theText, theDate, theList, theApplication, thePriority
 	if theApplication is not "" and not isAppSupported(theApplication, "Reminders") then
 		return theApplication & " is not currently supported by this workflow"
 	end if
-	
+
 	set subtitle to "Create a new reminder"
 	if theApplication is not "" then set subtitle to subtitle & " from " & theApplication
 	if theText is not "" then set subtitle to subtitle & " to " & theText
@@ -429,16 +429,16 @@ end formatReminderSubtitle
 
 on reminderHelp()
 	set theResult to {Â
-		alfred_result_item_with_icon("reminder-help-1", "r all", "Show all outstanding reminders", "all", "no", "checked.png"), Â
-		alfred_result_item_with_icon("reminder-help-2", "r refresh", "Refresh outstanding reminders", "refresh", "no", "checked.png"), Â
-		alfred_result_item_with_icon("reminder-help-3", "r overdue", "Show overdue reminders", "overdue", "no", "checked.png"), Â
-		alfred_result_item_with_icon("reminder-help-4", "r this", formatReminderSubtitle("", "", "", my frontmostapp(), ""), "this", "no", "App.png") Â
+		alfred_result_item_with_icon("reminder-help-1", "do all", "Show all outstanding reminders", "all", "no", "checked.png"), Â
+		alfred_result_item_with_icon("reminder-help-2", "do refresh", "Refresh outstanding reminders", "refresh", "no", "checked.png"), Â
+		alfred_result_item_with_icon("reminder-help-3", "do overdue", "Show overdue reminders", "overdue", "no", "checked.png"), Â
+		alfred_result_item_with_icon("reminder-help-4", "do this", formatReminderSubtitle("", "", "", my frontmostapp(), ""), "this", "no", "App.png") Â
 			}
 	set i to 5
 	repeat with helpItem in reminderHelpItems
 		set parsedReminder to my parseReminder(helpItem)
 		set end of theResult to my alfred_result_item_with_icon("reminder-help-" & i, Â
-			"r " & helpItem, Â
+			"do " & helpItem, Â
 			formatReminderSubtitle(theText of parsedReminder, theDate of parsedReminder, theList of parsedReminder, theApplication of parsedReminder, thePriority of parsedReminder), Â
 			helpItem, Â
 			"no", Â
@@ -485,9 +485,9 @@ on actionReminderQuery(q, shouldOpen, appLib, wf, cacheFile, defaultList)
 		set valid to valid of reminder
 		set rList to theList of reminder
 		set theBody to ""
-		
+
 		if valid is not "yes" then return "Could not understand command \"" & q & "\""
-		
+
 		if theApplication is not "" and isAppSupported(theApplication, "Reminders") then
 			set theAppReminder to appLib's reminderFromApplication(theApplication)
 			if theText is "" then
@@ -497,7 +497,7 @@ on actionReminderQuery(q, shouldOpen, appLib, wf, cacheFile, defaultList)
 		else if theApplication is not "" then
 			return theApplication & " is not currently supported by this workflow"
 		end if
-		
+
 		tell application id "com.apple.reminders"
 			using terms from application "Reminders"
 				if rList is not "" then
@@ -674,8 +674,8 @@ on formatMediaInfo(metadata)
 			end if
 		end if
 	end repeat
-	
-	-- format the list	
+
+	-- format the list
 	set theResult to {}
 	set metadataList to metadataProperties as list
 	repeat with i from 1 to number of items in metadataList
@@ -699,8 +699,8 @@ on formatopenmeta(metadata)
 			end if
 		end if
 	end repeat
-	
-	-- format the list	
+
+	-- format the list
 	set theResult to {}
 	set metadataList to metadataProperties as list
 	repeat with i from 1 to number of items in metadataList
@@ -723,7 +723,7 @@ end getSpotlightComment
 -- alfred specific
 
 on alfred_result(uid, title, subtitle, arg, valid)
-	-- format the list	
+	-- format the list
 	set theResult to alfred_result_items({my alfred_result_item(uid, title, subtitle, arg, valid)})
 	return theResult
 end alfred_result
@@ -774,7 +774,7 @@ on isLatestVersion(bundleid, currentversion, wf, cacheFile, checkFrequency)
 		set lastVersion to wf's get_value("latestversion", cacheFile)
 		set lastVersion to lastVersion as number
 	end try
-	
+
 	if timestamp is not missing value and lastResult is not missing value and lastVersion is not missing value then
 		if ((current date) - timestamp is less than checkFrequency) and lastVersion is less than or equal to currentversion then
 			-- cache is still valid
@@ -844,7 +844,7 @@ on convertTime(theTimeStr)
 				set theTimeStr to (characters 1 thru -3 of theTimeStr) as string
 				set pm to true
 			end if
-			
+
 			set AppleScript's text item delimiters to old_delims
 		end if
 		if (offset of "." in theTimeStr) is greater than 0 then
@@ -871,7 +871,7 @@ on convertTime(theTimeStr)
 			-- assume hours
 			set num to num + (theTimeStr * hours)
 		end if
-		
+
 		-- determine am or pm based on current time
 		if (not am and not pm) Â
 			and num is less than (12 * hours) Â
@@ -880,15 +880,15 @@ on convertTime(theTimeStr)
 		else if num is greater than or equal to (12 * hours) then
 			set num to (num - (12 * hours))
 		end if
-		
+
 		if pm then
 			set num to num + (12 * hours)
 		end if
-		
+
 	on error
 		return
 	end try
-	
+
 	if num is less than ((current date)'s time) then
 		--tomorrow
 		set theDate to ((current date) + days)
@@ -896,11 +896,11 @@ on convertTime(theTimeStr)
 		--today
 		set theDate to (current date)
 	end if
-	
+
 	set theDate's time to num
-	
+
 	return theDate
-	
+
 end convertTime
 
 on splitByColon(theText)
@@ -925,17 +925,17 @@ on trim(theseCharacters, someText)
 	-- Lazy default (AppleScript doesn't support default values)
 	if theseCharacters is true then set theseCharacters to Â
 		{" ", tab, ASCII character 10, return, ASCII character 0}
-	
+
 	if someText is "" then return
-	
+
 	repeat until first character of someText is not in theseCharacters
 		set someText to text 2 thru -1 of someText
 	end repeat
-	
+
 	repeat until last character of someText is not in theseCharacters
 		set someText to text 1 thru -2 of someText
 	end repeat
-	
+
 	return someText
 end trim
 
@@ -950,7 +950,7 @@ on format_date(the_date, format_string)
 			minutes of the_date, seconds of the_date}
 	set {month_name, day_name} to {(month of the_date) as string, (weekday of the_date) as string}
 	set suffix_list to {"th", "st", "nd", "rd", "th", "th", "th", "th", "th", "th"}
-	
+
 	set placeholders to Â
 		{"<<Year>>", Â
 			"<<Year 2>>", Â
@@ -969,7 +969,7 @@ on format_date(the_date, format_string)
 			"<<Minute 2>>", Â
 			"<<Second>>", Â
 			"<<Second 2>>"}
-	
+
 	set value_list to {Â
 		year_num as string, Â
 		dd(year_num), Â
@@ -988,7 +988,7 @@ on format_date(the_date, format_string)
 		dd(minute_num), Â
 		second_num as string, Â
 		dd(second_num)}
-	
+
 	-- repace elements of format string
 	set old_delims to AppleScript's text item delimiters
 	-- in a loop, replace all placeholders by the
@@ -1001,7 +1001,7 @@ on format_date(the_date, format_string)
 		set AppleScript's text item delimiters to val as text
 		set format_string to temp as text
 	end repeat
-	
+
 	set AppleScript's text item delimiters to old_delims
 	return format_string
 end format_date
@@ -1060,7 +1060,7 @@ end q_is_empty
 on q_trim(str)
 	if class of str is not text or class of str is not string or str is missing value then return str
 	if str is "" then return str
-	
+
 	repeat while str begins with " "
 		try
 			set str to items 2 thru -1 of str as text
